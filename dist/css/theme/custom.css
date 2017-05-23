@@ -1,0 +1,67 @@
+.reveal {
+  font-weight: lighter;
+}
+
+/*
+ * .reveal .slides {
+ *   margin-top: 10px;
+ *   margin-bottom: 10px;
+ * }
+ */
+
+.reveal small pre {
+  font-size: .75em;
+}
+
+.reveal pre {
+  width: auto;
+  box-shadow: none;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+.reveal pre code {
+  padding: 10px 20px;
+  max-height: none;
+}
+
+.reveal pre.inline {
+  display: inline;
+}
+
+.reveal pre.inline code {
+  display: inline-block;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.reveal small {
+  vertical-align: baseline;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  color: #0c74c3;
+  font-weight: lighter;
+  text-transform: none;
+}
+
+.reveal h1 {
+  font-size: 1.5em;
+}
+
+.reveal h2 {
+  font-size: 1.25em;
+}
+
+.reveal h3 {
+  font-size: 1.125em;
+}
+
+.reveal h4 {
+  font-size: 1em;
+}

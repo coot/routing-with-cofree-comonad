@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+  <head>
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/solarized-light.css">
+    <link rel="stylesheet" href="css/theme/solarized.css">
+    <link rel="stylesheet" href="css/theme/custom.css">
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+	<section>
+	  <h1>Routing with Cofree Comonad</h1>
+	  <h6><a target="_blank" href="https://github.com/coot/purescript-cofree-react-router"><small>https://github.com/coot/purescript-cofree-react-router</small></a></h6>
+	  <p>
+	    Marcin Szamotulski
+	    <div><a target="_blank" href="https://github.com/coot">github: @coot</a></div>
+	    <div><a target="_blank" href="https://twitter.com/me_coot">twitter: @me_coot</a></div>
+	  </p>
+	</section>
+	<section>
+	  <h1>Routing with Cofree Comonad</h1>
+	  <h6><a target="_blank" href="https://github.com/coot/purescript-cofree-react-router"><small>https://github.com/coot/purescript-cofree-react-router</small></a></h6>
+	  <ul>
+	    <li>comonads</li>
+	    <li>cofree comonad</li>
+	    <li>react router (v3)</li>
+	    <li>cofree react router</li>
+	    <li>isomorphic react app example</li>
+	  </ul>
+	</section>
+	<section>
+	  <h1>Comonads</h1>
+	  <p class="fragment">
+	    Are useful for tracking state in a possibly infinite loop
+	  </p>
+	  <ul class="fragment">
+	    <li>streams</li>
+	    <li><a target="_blank" href="https://github.com/coot/purescript-dsl-example">interpreters of dsl's</a></li>
+	    <li><a target="_blank" href="https://github.com/paf31/purescript-comonad-ui">modeling UIs</a></li></li>
+	    <li>routing - really ;)</li>
+	  </ul>
+	  <p class="fragment">
+	    <small>
+	      Often comonads are explored through a pairing with a monad (<code>Cofree</code> pairs with <code>Free</code>, <code>Store</code> pairs with <code>State</code>, ...)
+	    </small>
+	  </p>
+	</section>
+	<section>
+	  <h1>Comonad - definition</h1>
+	    <pre class="fragment"><code class="language-haskell">class Functor w <= Extend w where
+  extend :: forall b a. (w a -> b) -> w a -> w b
+
+-- | Forwards co-Kleisli composition.
+composeCoKleisli
+  :: forall b a w c
+   . Extend w
+  => (w a -> b)
+  -> (w b -> c)
+  -> w a -> c
+composeCoKleisli f g w = g (f <<= w)
+
+-- | Duplicate a comonadic context.
+duplicate
+  :: forall a w
+   . Extend w
+  => w a -> w (w a)
+duplicate = extend id
+	    </code></pre>
+	    <pre class="fragment"><code class="language-haskell">class Extend w <= Comonad w where
+  extract :: forall a. w a -> a
+	    </code></pre>
+	</section>
+	<section>
+	  <h1>Stream Comonad</h1>
+	    <pre><code class="language-haskell">data Stream a = Cons a (Lazy (Stream a))
+
+derive instance functorStream :: Functor Stream
+
+instance extendStream :: Extend Stream where
+  extend f s@(Cons a r) = Cons (f s) (extend f <$> r)
+
+instance comonadStream :: Comonad Stream where
+  extract (Cons a _) = a
+
+smooth :: Int -> Stream Number -> Stream Number
+smooth n s = extend (avN n) s
+  where
+    sumN :: Int -> Stream Number -> Number
+    sumN 0 _ = 0.0
+    sumN n (Cons a r) = a + (sumN (n - 1) (force r))
+
+    avN :: Int -> Stream Number -> Number
+    avN n s = (sumN n s) / (toNumber n)
+	    </code></pre>
+	</section>
+	<section>
+	  <h1>Cofree comonad</h1>
+	  Give a functor `f` we can build a cofree comonad
+	  <pre><code class="language-haskell">
+data Cofree f a = Cofree a (Lazy (f (Cofree f a)))
+
+mkCofree :: forall f a. a -> f (Cofree f a) -> Cofree f a
+mkCofree a t = Cofree a (defer \_ -> t)
+
+infixr 5 mkCofree as :<
+
+-- | Returns the label for a tree.
+head :: forall f a. Cofree f a -> a
+head (Cofree h _) = h
+
+instance functorCofree :: Functor f => Functor (Cofree f) where
+  map f = loop where
+    loop fa@(Cofree head _tail)
+      = Cofree (f head) ((map loop) <$> _tail)
+
+instance extendCofree :: Functor f => Extend (Cofree f) where
+  extend f = loop
+    where
+    loop fa@(Cofree _ _tail)
+      = Cofree (f fa) ((map loop) <$> _tail)
+
+instance comonadCofree :: Functor f => Comonad (Cofree f) where
+  extract = head
+	  </code></pre>
+	</section>
+	<section>
+	  <h1>React Router</h1>
+	  <pre class="fragment"><code class="language-jsx">
+&lt;Router history={browserHistory}&gt;
+  &lt;Route path="/" component={Main}&gt;
+    &lt;Route path="/home" component={Home}&gt;
+      &lt;Route path="/user/:userId" component={User} /&gt;
+      &lt;Route path="/book/:bookId" component={Book} /&gt;
+    &lt;/Route&gt;
+    &lt;Route path="/settings" component={Settings} /&gt;
+  &lt;/Route&gt;
+&lt;/Router&gt;
+	  </code></pre>
+	  <div class="fragment">
+	    Every `Route` can have arbitrary many children routes.  This looks like
+	    <pre><code class="language-haskell">
+  type Router route = Cofree Array route
+	    </code></pre>
+	  </div>
+	  <div class="fragment">
+	    <small>Note that `Cofree Array` could be used to model DOM (or vDOM).</small>
+	  </div>
+	</section>
+	<section>
+	  <h1>Cofree Router - Types</h1>
+	  <pre><code class="language-haskell">
+type RouteClass props arg
+  =  (RoutePropsClass props)
+  => ReactClass (props arg)
+
+data Route props arg
+  = Route String (Routing.Match arg) (RouteClass props arg)
+
+data IndexRoute props arg
+  = IndexRoute String (RouteClass props arg)
+
+type Router props arg
+  =  (RoutePropsClass props)
+  => Cofree Array
+      (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+
+withoutIndex
+  :: forall props arg
+   . (RoutePropsClass props)
+  => Route props arg
+  -> Array (Router props args)
+  -> Router props arg
+withoutIndex r rs = Tuple r Nothing :< rs
+
+-- | `:+` lets define routes without index route
+infixr 6 withoutIndex as :+
+	  </code></pre>
+	</section>
+	<section>
+	  <h1>Developer Interface</h1>
+	  <p>
+	    Let's rewrite the routing example:
+	  </p>
+	  <pre><code class="language-haskell">
+router =
+  Route "main" (lit "") Main :+
+    [ Route "home" (unit <$ lit "home") Home :+
+      [ Route "user" ({userId: _} <$> (lit "user" *> int)) User :+ []
+      , Route "book" ({bookId: _} <$> (lit "book" *> int)) Book :+ []
+      ]
+    , Route "settings" (unit <$ lit "settings") Settings :+ []
+    ]
+	  </code></pre>
+	</section>
+	<section>
+	  <h1>Some internals</h1>
+	  <small><pre><code class="language-haskell">
+matchRouter
+  :: forall props args
+   . (RoutePropsClass props)
+  => R.Route
+  -> Router props args
+  -> Maybe (Cofree Array
+	      { url :: R.Route
+	      , props :: props args
+	      , route :: Route props args
+	      , indexRoute :: Maybe (IndexRoute props args) })
+matchRouter url_ router = shake $ go [] url_ router
+    where
+    query = foldMap toMap url_
+
+    toMap (R.Query q) = q
+
+    go
+      :: Array args
+      -> R.Route
+      -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
+      -> Cofree Array (Maybe
+	    { url :: R.Route
+	    , props :: props args
+	    , route :: Route props args
+	    , indexRoute :: Maybe (IndexRoute props args) })
+    go argsArr url' r =
+      case head r of
+        Tuple route indexRoute ->
+          case view urlLens route of
+            Match mFn ->
+              case unV Left Right (mFn url') of
+                Right (Tuple url arg) ->
+                  let props = case route of
+                                Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg) query
+                  in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr arg) url) (tail r)
+                Left err -> Nothing :< []
+	  </code></pre></small>
+	</section>
+	<section>
+	  <h1>Hmm... but why not use extend</h1>
+	  <pre><code class="language-haskell">
+extendM
+  :: forall w m a b
+   . Extend w
+  => Traversable w
+  => Applicative m
+  => (w a -> m b)
+  -> w a
+  -> m (w b)
+extendM f wa = sequence $ extend f wa
+	  </code></pre>
+	  <p>
+	  where we could track the state in the `State` monad
+	  </p>
+	  <small class="fragment">
+	    It does not work, because we need to change the state (args matched so far, and the url) only when we go one level deeper in the cofree comonad, and not when iterating through the tail.
+	  </small>
+	</section>
+	<section>
+	  <h1>Run router</h1>
+	  <small><pre><code class="language-haskell">
+runRouter
+  :: forall props args
+   . (RoutePropsClass props)
+  -- url:
+  => String
+  -- router:
+  -> Cofree Array
+      (Tuple (Route props args) (Maybe (IndexRoute props args)))
+  -- react element to be mounted:
+  -> Maybe ReactElement
+runRouter urlStr router =
+    createRouteElement <$> matchRouter (parse decodeURIComponent urlStr) router
+  where
+    -- ...
+	  </code></pre></small>
+	</section>
+	<section>
+	  <h1>Live Demo Time</h1>
+	  <small><a target="_blank" href="https://github.com/coot/purescript-isomorphic-react-example">https://github.com/coot/purescript-isomorphic-react-example</a></small>
+      </div>
+    </div>
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+    <script>
+      Reveal.initialize({
+	controls: false,
+	history: true,
+	slideNumber: true,
+	maxScale: 1,
+	height: 900,
+	dependencies: [
+	  {
+	    src: 'plugin/highlight/highlight.js',
+	    "async": true,
+	    callback: function() {
+	      hljs.initHighlightingOnLoad();
+	    }
+	  },
+	],
+      });
+    </script>
+  </body>
+</html>
