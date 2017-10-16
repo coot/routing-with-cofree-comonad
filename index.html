@@ -98,7 +98,7 @@ smooth n s = extend (avN n) s
 	</section>
 	<section>
 	  <h1>Cofree comonad</h1>
-	  Give a functor `f` we can build a cofree comonad
+	  Given a functor `f` we can build a cofree comonad
 	  <pre><code class="language-haskell">
 data Cofree f a = Cofree a (Lazy (f (Cofree f a)))
 
